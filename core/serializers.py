@@ -11,7 +11,6 @@ class RoleSerializer(serializers.ModelSerializer):
 # 2. Me Serializer
 class MeSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
-
     class Meta:
         model = User
         fields = ["id", "username", "email", "role"]
@@ -23,9 +22,8 @@ class UserSerializer(serializers.ModelSerializer):
         queryset=Role.objects.all(),
         source='role',
         write_only=True,
-        required=False   # ✅ make optional for signup
+        required=False
     )
-
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'role', 'role_id','gmail','gmail_app_password']
@@ -44,10 +42,9 @@ class UserSerializer(serializers.ModelSerializer):
             instance.save()
         return instance
 
-
+# 4. Expense Serializer
 class ExpenseSerializer(serializers.ModelSerializer):
     created_by = serializers.StringRelatedField(read_only=True)
-
     class Meta:
         model = Expense
         fields = [
@@ -67,7 +64,6 @@ class ExpenseSerializer(serializers.ModelSerializer):
 # 5. Income Serializer
 class IncomeSerializer(serializers.ModelSerializer):
     created_by = serializers.StringRelatedField(read_only=True)
-
     class Meta:
         model = Income
         fields = ['id', 'title', 'amount', 'source', 'date', 'created_by']

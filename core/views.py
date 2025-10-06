@@ -11,7 +11,6 @@ import imaplib, email, re, datetime
 from bs4 import BeautifulSoup
 from django.http import HttpResponse
 import openpyxl
-
 from .models import Role, User, Expense, Income
 from .serializers import (
     MeSerializer, RoleSerializer, UserSerializer,
@@ -22,30 +21,26 @@ from .permissions import IsOwnerOrAdmin
 # 1. Authentication (/auth/me)
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
     def get(self, request):
         serializer = MeSerializer(request.user)
         return Response(serializer.data)
-
 
 # 2. User & Role Management
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]  # Admin only
-
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
     def get_permissions(self):
         if self.action in ["update", "partial_update", "destroy", "retrieve"]:
-            return [IsOwnerOrAdmin()]   # user manages self, admin manages all
+            return [IsOwnerOrAdmin()]
         elif self.action == "list":
-            return [permissions.IsAdminUser()]  # admin can list all users
+            return [permissions.IsAdminUser()]
         elif self.action == "create":
-            return [permissions.AllowAny()]  # signup
+            return [permissions.AllowAny()]
         else:
             return [permissions.IsAuthenticated()]
 
@@ -55,7 +50,6 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer.save(role=default_role)
         else:
             serializer.save()
-
 
 # 3. Expenses
 class ExpenseViewSet(viewsets.ModelViewSet):
@@ -69,40 +63,30 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = Expense.objects.filter(created_by=user).order_by("-date_time")
-
-        # Date filtering
         from_date = self.request.query_params.get("from_date")
         to_date = self.request.query_params.get("to_date")
-
         if from_date:
             qs = qs.filter(date_time__date__gte=from_date)
         if to_date:
             qs = qs.filter(date_time__date__lte=to_date)
-
         return qs
 
     @action(detail=False, methods=["post"])
     def fetch_from_gmail(self, request):
         try:
-            # ✅ Get Gmail and App Password from logged-in user
             EMAIL = request.user.gmail
             PASSWORD = request.user.gmail_app_password
-
             if not EMAIL or not PASSWORD:
                 return Response(
                     {"error": "Your Gmail or App Password is not set in your profile."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
             from_date = request.GET.get("from_date")
             to_date = request.GET.get("to_date")
-
             imap = imaplib.IMAP4_SSL("imap.gmail.com")
             imap.login(EMAIL, PASSWORD)
             imap.select("inbox")
-
             search_query = '(FROM "e.statement@telenorbank.pk")'
-
             if from_date and to_date:
                 from_dt = datetime.datetime.strptime(from_date, "%Y-%m-%d")
                 to_dt = datetime.datetime.strptime(to_date, "%Y-%m-%d") + datetime.timedelta(days=1)
@@ -237,11 +221,7 @@ class ReportsViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _filter_queryset(self, qs, request):
-        # Allow admin to see all, restrict normal user
-        if not request.user.is_superuser:
-            qs = qs.filter(created_by=request.user)
-
-        # Month filter
+        qs = qs.filter(created_by=request.user)
         month = request.query_params.get("month")
         if month:
             try:
@@ -256,11 +236,9 @@ class ReportsViewSet(viewsets.ViewSet):
     def profit_loss(self, request):
         expenses = self._filter_queryset(Expense.objects.all(), request)
         incomes = self._filter_queryset(Income.objects.all(), request)
-
         total_expenses = expenses.aggregate(total=Sum("amount"))["total"] or 0
         total_income = incomes.aggregate(total=Sum("amount"))["total"] or 0
         profit_loss = total_income - total_expenses
-
         return Response({
             "total_income": total_income,
             "total_expenses": total_expenses,
@@ -289,7 +267,6 @@ class ReportsViewSet(viewsets.ViewSet):
     def export_excel(self, request):
         expenses = self._filter_queryset(Expense.objects.all(), request)
         incomes = self._filter_queryset(Income.objects.all(), request)
-
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Financial Report"
@@ -319,7 +296,7 @@ class ReportsViewSet(viewsets.ViewSet):
 
 # 6. Password Reset
 class PasswordResetRequestView(APIView):
-    permission_classes = [permissions.AllowAny]  # anyone can request reset
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         email = request.data.get("email")
@@ -346,7 +323,7 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    permission_classes = [permissions.AllowAny]  # anyone with valid token
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         token = request.data.get("token")

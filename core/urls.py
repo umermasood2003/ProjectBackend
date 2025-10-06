@@ -1,6 +1,4 @@
 from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from .views import (
     PasswordResetConfirmView, PasswordResetRequestView, RoleViewSet, UserViewSet, ExpenseViewSet, IncomeViewSet,
@@ -19,5 +17,5 @@ urlpatterns = [
     path('auth/me/', MeView.as_view(), name='me'),
     path('api-auth/', include('rest_framework.urls')),
     path("password_reset/", PasswordResetRequestView.as_view(), name="password_reset"),
-    path("api/password_reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path("password_reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+]
